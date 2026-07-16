@@ -5,8 +5,8 @@
 1. Open `main_process.py` and configure the input and output paths at the bottom of the file:
 
    ```python
-   root_folder = r'/path/to/input/dicom/files/'
-   root_out_folder = r'/path/to/output/'
+   root_folder = r'/path_to_your_input_dicom_files/'
+   root_out_folder = r'/path_to_output_your_transformed_files/'
    ```
 
 2. Run the preprocessing script:
@@ -15,7 +15,7 @@
    python main_process.py
    ```
 
-The input path must contain the DICOM files. The output path will contain the mirrored folder structure under `vids_cropped` and `vids_resized`.
+The input path must contain the DICOM files, but they do not need to be located directly in the root folder. The script recursively walks through `root_folder` and its child directories to find folders containing DICOM files. The output path will contain the mirrored folder structure under `vids_cropped` and `vids_resized`.
 
 The number of workers and batch size can optionally be configured through the `PREPROCESS_DCM_WORKERS` and `PREPROCESS_DCM_BATCH_SIZE` environment variables.
 
