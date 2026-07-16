@@ -1,5 +1,7 @@
 # Transform Echo DCM
 
+![Transform Echo DCM](data/transformEchoDCM.png)
+
 ## How to use
 
 1. Open `main_process.py` and configure the input and output paths at the bottom of the file:
@@ -23,7 +25,7 @@ This project processes ultrasound DICOM files through two paths:
 
 ## Input type
 
-- **Video:** A multi-frame DICOM is saved as a processed video.
+- **Video:** A multi-frame DICOM is saved as a AVI video.
 - **Image:** A single-frame DICOM is saved as a PNG image.
 
 ## Output type
