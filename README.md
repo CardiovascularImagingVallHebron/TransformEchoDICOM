@@ -24,6 +24,11 @@ Each input produces two types of output:
 - **Videos with a detected cone:** Every frame is masked and cropped around the cone, then resized to 256 x 256 pixels and saved as an AVI.
 - **Videos without a valid cone:** Every frame is center-cropped to a square and resized to 256 x 256 pixels before being saved as an AVI.
 
+## Considerations
+
+- The script can be relaunched after a failure or interruption. It detects output files that have already been created and skips them, allowing processing to continue without starting again from the beginning.
+- The script receives an input path and an output path. The input path must point to the directory containing the DICOM images. While transforming the files, the script mirrors the input directory structure inside both `vids_cropped` and `vids_resized` in the output directory.
+
 ## Credits
 
 Pere Lopez-Gutierrez, Vall d'Hebron Institut de Recerca, Barcelona, Spain
