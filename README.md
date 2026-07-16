@@ -1,5 +1,24 @@
 # Transform Echo DCM
 
+## How to use
+
+1. Open `main_process.py` and configure the input and output paths at the bottom of the file:
+
+   ```python
+   root_folder = r'/path/to/input/dicom/files/'
+   root_out_folder = r'/path/to/output/'
+   ```
+
+2. Run the preprocessing script:
+
+   ```bash
+   python main_process.py
+   ```
+
+The input path must contain the DICOM files. The output path will contain the mirrored folder structure under `vids_cropped` and `vids_resized`.
+
+The number of workers and batch size can optionally be configured through the `PREPROCESS_DCM_WORKERS` and `PREPROCESS_DCM_BATCH_SIZE` environment variables.
+
 This project processes ultrasound DICOM files through two paths:
 
 ## Input type
@@ -24,11 +43,10 @@ Each input produces two types of output:
 - **Videos with a detected cone:** Every frame is masked and cropped around the cone, then resized to 256 x 256 pixels and saved as an AVI.
 - **Videos without a valid cone:** Every frame is center-cropped to a square and resized to 256 x 256 pixels before being saved as an AVI.
 
-## Considerations
+## Consideration
 
 - The script can be relaunched after a failure or interruption. It detects output files that have already been created and skips them, allowing processing to continue without starting again from the beginning.
-- The script receives an input path and an output path. The input path must point to the directory containing the DICOM images. While transforming the files, the script mirrors the input directory structure inside both `vids_cropped` and `vids_resized` in the output directory.
 
-## Credits
+## Contact
 
-Pere Lopez-Gutierrez, Vall d'Hebron Institut de Recerca, Barcelona, Spain
+For any questions or inquiries, feel free to reach out to Pere Lopez-Gutierrez, Vall d'Hebron Institut de Recerca, Barcelona, Spain: [pere.lopez@vhir.org](mailto:pere.lopez@vhir.org).
