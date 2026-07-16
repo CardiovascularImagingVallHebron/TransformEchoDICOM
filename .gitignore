@@ -1,2 +1,5 @@
 .vscode
 /.csv
+.agents
+__pycache__
+src/__pycache__

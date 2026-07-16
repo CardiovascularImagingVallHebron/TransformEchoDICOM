@@ -1,14 +1,11 @@
 import cv2
 import numpy as np
-import os
 from skimage.transform import probabilistic_hough_line
 from itertools import combinations
-import sympy as sp
 from collections import defaultdict
 from skimage.draw import polygon2mask
-import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from math import sqrt, cos, sin, atan2
+from math import atan2
 
 
 def difference_frames(all_frames, mask_ecg):
@@ -17,32 +14,38 @@ def difference_frames(all_frames, mask_ecg):
             frame = cv2.cvtColor(frame.astype(np.uint8), cv2.COLOR_RGB2GRAY)
         return frame
 
-    # Procesar todos los frames
+    # Process all frames.
     all_frames_gray = [process_frame(frame) for frame in all_frames]
 
-    # Ahora all_frames_gray contiene todos los frames convertidos a escala de grises si era necesario
+    # all_frames_gray now contains every frame converted to grayscale when necessary.
     all_frames_ori = np.asarray(all_frames_gray)
-    max_frames = all_frames_ori.max(axis=(0)) #max values
-    min_frames = all_frames_ori.min(axis=(0)) #min values
-    dif_rel_frames = max_frames - min_frames #distance between max and min
+
+    if len(all_frames_ori) == 1:
+        # A single image has no temporal difference, so use its non-background
+        # pixels as the initial content mask for cone detection.
+        dif_rel_frames = all_frames_ori[0]
+    else:
+        max_frames = all_frames_ori.max(axis=(0))  # Maximum values.
+        min_frames = all_frames_ori.min(axis=(0))  # Minimum values.
+        dif_rel_frames = max_frames - min_frames  # Distance between max and min.
 
     if mask_ecg is None:
-        mask_ecg = np.ones(all_frames[0].shape)
+        mask_ecg = np.ones(dif_rel_frames.shape)
 
     dif_frames_filt = np.where(dif_rel_frames>6, 1, 0) * mask_ecg # * mask_bin_new #if difference is>3 is 1, else 0 
-                                                        # con el nuevo cambio de color deberá ser -10
+                                                        # With the new color change, this should be -10.
     frame_array = all_frames_ori[-1]
     
     return dif_frames_filt, frame_array
 
 def draw_contours(dif_frames_filt, length=30):
-    # Utiliza la función findContours de OpenCV para detectar los contornos
+    # Use OpenCV's findContours function to detect contours.
     contours, hierarchy = cv2.findContours(dif_frames_filt.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    # Crea una imagen de fondo negro con las mismas dimensiones que result_array
+    # Create a black background image with the same dimensions as result_array.
     mask = np.zeros_like(dif_frames_filt)
 
-    # Dibuja los contornos en la máscara con fill (relleno) establecido a 1 (blanco)
+    # Draw filled contours on the mask with a value of 1 (white).
     cone = max(contours, key = cv2.contourArea)
 
     cv2.drawContours(mask, [cone], -1, color=1, thickness=cv2.FILLED)
@@ -71,7 +74,7 @@ def extend_line(p0, p1, length=1000):
     """
     Extend the line defined by points p0 and p1 to a new length in both directions from p0.
     """
-    from math import sqrt, cos, sin, atan2
+    from math import cos, sin, atan2
 
     # Calculate the current length of the line
     dx = p1[0] - p0[0]
@@ -94,10 +97,10 @@ def combine_segments(angles, segments):
     # Create a dictionary to hold segments by their rounded angle to account for floating point precision
     segments_by_angle = defaultdict(list)
 
-    bucket_size = 6  # Esto representa un rango de 0.3 hacia cada lado
+    bucket_size = 6  # This represents a range of 0.3 on each side.
 
     for angle, segment in zip(angles, segments):
-        # Encuentra el bucket para el ángulo actual
+        # Find the bucket for the current angle.
         if 30>np.abs(angle)>=0 or 180>=np.abs(angle)>150:
             if np.abs(angle) == 180 or np.abs(angle)== 0:
                 bucket = np.random.random()
@@ -108,7 +111,7 @@ def combine_segments(angles, segments):
         else:
             bucket = round(np.abs(angle) / bucket_size)
 
-        # Agrupa el segmento en el bucket correspondiente
+        # Group the segment in the corresponding bucket.
         segments_by_angle[bucket].append(segment)
     # Function to find the extreme points from a list of segments considering their direction
     def extreme_points(segments):
@@ -188,19 +191,19 @@ def find_cone_peak(segments):
 
 def inter_circ_seg(centro, radio, segment1, segment2):
     def interseccion_circulo_segmento(c, r, s1, s2):
-        # Calcular la ecuación de la línea del segmento
+        # Calculate the equation of the segment's line.
         dx, dy = s2[0] - s1[0], s2[1] - s1[1]
         dr2 = float(dx**2 + dy**2)
         D = (s1[0] - c[0]) * (s2[1] - c[1]) - (s2[0] - c[0]) * (s1[1] - c[1])
 
-        # Calcular el discriminante
+        # Calculate the discriminant.
         discriminante = r**2 * dr2 - D**2
 
         if discriminante < 0:
-            # No hay intersección
+            # There is no intersection.
             return []
 
-        # Calcular los puntos de intersección
+        # Calculate the intersection points.
         sign_dy = 1 if dy >= 0 else -1
         sqrt_disc = np.sqrt(discriminante)
         x1 = (D * dy + sign_dy * dx * sqrt_disc) / dr2 + c[0]
@@ -303,7 +306,7 @@ def polygon_cone(cone_peak, cone_segments, dif_frames_filt, image):
 
 def cone_iteration(i, dif_frames_filt):
     try:
-        # Retornamos la imagen 
+        # Return the image.
         image, lines, angles = draw_contours(dif_frames_filt)
 
         # Calculate the combined segments
@@ -318,15 +321,14 @@ def cone_iteration(i, dif_frames_filt):
         return i, binary_array, polygon_area
 
     except Exception as e:
-        # En caso de error, retornar ceros
+        # Return zeros when an error occurs.
         print(f"Error: {e}")
         return -1, np.zeros(dif_frames_filt.shape), 0
 
 def cone_extract(all_frames, mask_ecg, n_iters):
     """
-        Función que extrae el cono de la eco. Itera varias veces para sacar la mejor opción.
+        Extract the ultrasound cone by iterating several times to find the best option.
     """
-    start = time.time()
     dif_frames_filt, frame = difference_frames(all_frames, mask_ecg)
 
 
@@ -343,7 +345,7 @@ def cone_extract(all_frames, mask_ecg, n_iters):
                 final_polygon_area = polygon_area
                 final_binary_array = binary_array    
 
-    # Justo antes del return
+    # Immediately before returning.
     if all_frames[0].ndim == 3 and all_frames[0].shape[2] == 3:
         final_binary_array = np.repeat(final_binary_array[:, :, np.newaxis], 3, axis=2)
 

@@ -11,9 +11,14 @@ for thread_env_var in (
 
 import multiprocessing
 import pandas as pd
-from src.utils import extract_frames_from_dicom_parche, new_resize_img, new_orig_img
+from src.utils import (
+    extract_frames_from_dicom_parche,
+    is_2d_ultrasound_image,
+    new_orig_img,
+    new_resize_img,
+    resize_shortest_side,
+)
 from src.utils_cone_extract import cone_extract
-import pydicom
 from tqdm import tqdm
 import numpy as np
 import cv2
@@ -127,25 +132,70 @@ def process_dicom_file(args):
         os.makedirs(res_path, exist_ok=True)
         os.makedirs(crop_path, exist_ok=True)
     except OSError as e:
-        print(f"❌ Cannot create output folders in {root_out_folder}: {e}")
+        print(f"Cannot create output folders in {root_out_folder}: {e}")
         return
 
     vid_res_path  = os.path.join(res_path,  f'{filename}.avi')
     vid_crop_path = os.path.join(crop_path, f'{filename}.avi')
 
-    if os.path.exists(vid_res_path) and os.path.exists(vid_crop_path):
-        print(f"Skipped (already exists): {os.path.join(rel_dir, filename + '.dcm')}")
-        return
-
     try:
-        ds = pydicom.dcmread(full_dicom_path)
-
-        if (ds.PhotometricInterpretation not in ['MONOCHROME1', 'MONOCHROME2'] and len(ds.pixel_array.shape) < 4) or \
-           (ds.PhotometricInterpretation in ['MONOCHROME1', 'MONOCHROME2'] and len(ds.pixel_array.shape) < 3):
-            return
-
         try:
             frames, frame_ecg_mask = extract_frames_from_dicom_parche(full_dicom_path)
+            if not frames:
+                return
+
+            if len(frames) == 1:
+                png_res_path = os.path.join(res_path, f'{filename}.png')
+                png_crop_path = os.path.join(crop_path, f'{filename}.png')
+
+                if os.path.exists(png_res_path) and os.path.exists(png_crop_path):
+                    print(f"Skipped (already exists): {os.path.join(rel_dir, filename + '.dcm')}")
+                    return
+
+                original_frame = frames[0]
+                if is_2d_ultrasound_image(full_dicom_path):
+                    mask = cone_extract(frames, frame_ecg_mask, 4)
+                    if np.any(mask):
+                        normalized_frame = original_frame.astype(np.float32)
+                        if normalized_frame.max() > 255:
+                            normalized_frame *= 255.0 / normalized_frame.max()
+                        normalized_frame /= 255.0
+                        resized_image, resized_mask, _ = new_resize_img(
+                            normalized_frame * mask,
+                            mask,
+                            x_dim,
+                            y_dim,
+                        )
+                        resized_frame = (
+                            resized_image * resized_mask * 255
+                        ).astype(np.uint8)
+                    else:
+                        resized_frame = resize_shortest_side(
+                            original_frame,
+                            target_short_side=min(x_dim, y_dim),
+                        )
+                else:
+                    resized_frame = resize_shortest_side(
+                        original_frame,
+                        target_short_side=min(x_dim, y_dim),
+                    )
+
+                if original_frame.ndim == 3:
+                    original_frame = cv2.cvtColor(original_frame, cv2.COLOR_RGB2BGR)
+                    resized_frame = cv2.cvtColor(resized_frame, cv2.COLOR_RGB2BGR)
+
+                original_saved = cv2.imwrite(png_crop_path, original_frame)
+                resized_saved = cv2.imwrite(png_res_path, resized_frame)
+                if not original_saved or not resized_saved:
+                    raise OSError(f"Could not save PNG output for {full_dicom_path}")
+
+                print(f'OK (single frame): {os.path.join(rel_dir, filename)}')
+                return
+
+            if os.path.exists(vid_res_path) and os.path.exists(vid_crop_path):
+                print(f"Skipped (already exists): {os.path.join(rel_dir, filename + '.dcm')}")
+                return
+
             mask = cone_extract(frames, frame_ecg_mask, 4)
             suma_mask = np.sum(mask)
             total_image = mask.shape[0] * mask.shape[1]
@@ -180,7 +230,7 @@ def process_dicom_file(args):
                         )
                     croped_writer.write(crop_cone)
 
-                print(f'✅ OK: {os.path.join(rel_dir, filename)}')
+                print(f'OK: {os.path.join(rel_dir, filename)}')
             else:
                 for i, frame in enumerate(frames):
                     if frame.ndim == 3:
@@ -215,7 +265,7 @@ def process_dicom_file(args):
                     resize_writer.write(resized_bgr)
                     croped_writer.write(cropped_bgr)
 
-                print(f'⚠️ OK (low mask): {os.path.join(rel_dir, filename)}')
+                print(f'OK (low mask): {os.path.join(rel_dir, filename)}')
                 low_mask_record = (rel_dir, filename)
 
             resize_writer.release()
@@ -224,10 +274,10 @@ def process_dicom_file(args):
             return low_mask_record
 
         except Exception as e:
-            print(f"❌ Error {e} in: {full_dicom_path}")
+            print(f"Error {e} in: {full_dicom_path}")
 
     except Exception as e:
-        print(f"❌ Error processing {full_dicom_path}: {e}")
+        print(f"Error processing {full_dicom_path}: {e}")
 
 
 def process_patient_folders(root_folder, root_out_folder):
@@ -286,7 +336,7 @@ def process_patient_folders(root_folder, root_out_folder):
 
 if __name__ == '__main__':
     start = time.time()
-    root_folder = r'/mnt/nas/storage_dicom_us/data/'
-    root_out_folder = r'/scratch/sie/storage_avi_us/data/'
+    root_folder = r'your_DICOM_PATH'
+    root_out_folder = r'your_OUTPUT_PATH'
     process_patient_folders(root_folder, root_out_folder)
     print('Total time: ', time.time() - start, 's')
