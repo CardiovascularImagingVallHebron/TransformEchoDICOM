@@ -1,4 +1,4 @@
-# Echo DICOM preprocessing
+# Transform Echo DCM
 
 This project processes ultrasound DICOM files through two paths:
 
@@ -23,3 +23,7 @@ Each input produces two types of output:
 - **M-Mode, spectral Doppler, waveform, graphics, images without region metadata, or 2D images where cone detection fails:** The aspect ratio is preserved and the shortest side is resized to 256 pixels. The other side is scaled proportionally.
 - **Videos with a detected cone:** Every frame is masked and cropped around the cone, then resized to 256 x 256 pixels and saved as an AVI.
 - **Videos without a valid cone:** Every frame is center-cropped to a square and resized to 256 x 256 pixels before being saved as an AVI.
+
+## Credits
+
+Pere Lopez-Gutierrez, Vall d'Hebron Institut de Recerca, Barcelona, Spain
