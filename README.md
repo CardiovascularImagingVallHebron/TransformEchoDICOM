@@ -2,6 +2,24 @@
 
 ![Transform Echo DCM](data/transformEchoDCM.png)
 
+## Requirements
+
+- Python 3.11
+- `opencv-python`
+- `scikit-image`
+- `pandas`
+- `sympy`
+- `numpy`
+- `pydicom`
+- `matplotlib`
+- `tqdm`
+
+Install the required Python libraries with:
+
+```bash
+pip install opencv-python scikit-image pandas sympy numpy pydicom matplotlib tqdm
+```
+
 ## How to use
 
 1. Open `main_process.py` and configure the input and output paths at the bottom of the file:
