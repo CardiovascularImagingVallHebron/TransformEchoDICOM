@@ -1,4 +1,4 @@
-# Transform Echo DCM
+# Transform EchoDCM
 
 ![Transform Echo DCM](data/transformEchoDCM.png)
 
