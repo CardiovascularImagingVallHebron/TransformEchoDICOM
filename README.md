@@ -67,6 +67,12 @@ Each input produces two types of output:
 
 - The script can be relaunched after a failure or interruption. It detects output files that have already been created and skips them, allowing processing to continue without starting again from the beginning.
 
+## Citation
+
+In case of use this repository, please cite:
+
+Lopez-Gutierrez, Pere, et al. "**Artificial intelligence for aortic valve calcium score quantification by echocardiography**." MedRxiv.
+
 ## Contact
 
 For any questions or inquiries, feel free to reach out to Pere Lopez-Gutierrez, Vall d'Hebron Institut de Recerca, Barcelona, Spain: [pere.lopez@vhir.org](mailto:pere.lopez@vhir.org).

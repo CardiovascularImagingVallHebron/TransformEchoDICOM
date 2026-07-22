@@ -128,15 +128,25 @@ def process_dicom_file(args):
     # Replicate directory structure from DICOM inside AVI
     res_path  = os.path.join(root_out_folder, 'vids_resized', rel_dir)
     crop_path = os.path.join(root_out_folder, 'vids_cropped', rel_dir)
+
+    vid_res_path = os.path.join(res_path, f'{filename}.avi')
+    vid_crop_path = os.path.join(crop_path, f'{filename}.avi')
+    png_res_path = os.path.join(res_path, f'{filename}.png')
+    png_crop_path = os.path.join(crop_path, f'{filename}.png')
+
+    # Avoid reading and processing the DICOM when its output already exists.
+    avi_exists = os.path.exists(vid_res_path) and os.path.exists(vid_crop_path)
+    png_exists = os.path.exists(png_res_path) and os.path.exists(png_crop_path)
+    if avi_exists or png_exists:
+        print(f"Skipped (already exists): {os.path.join(rel_dir, filename + '.dcm')}")
+        return
+
     try:
         os.makedirs(res_path, exist_ok=True)
         os.makedirs(crop_path, exist_ok=True)
     except OSError as e:
         print(f"Cannot create output folders in {root_out_folder}: {e}")
         return
-
-    vid_res_path  = os.path.join(res_path,  f'{filename}.avi')
-    vid_crop_path = os.path.join(crop_path, f'{filename}.avi')
 
     try:
         try:
@@ -145,13 +155,6 @@ def process_dicom_file(args):
                 return
 
             if len(frames) == 1:
-                png_res_path = os.path.join(res_path, f'{filename}.png')
-                png_crop_path = os.path.join(crop_path, f'{filename}.png')
-
-                if os.path.exists(png_res_path) and os.path.exists(png_crop_path):
-                    print(f"Skipped (already exists): {os.path.join(rel_dir, filename + '.dcm')}")
-                    return
-
                 original_frame = frames[0]
                 if is_2d_ultrasound_image(full_dicom_path):
                     mask = cone_extract(frames, frame_ecg_mask, 4)
@@ -190,10 +193,6 @@ def process_dicom_file(args):
                     raise OSError(f"Could not save PNG output for {full_dicom_path}")
 
                 print(f'OK (single frame): {os.path.join(rel_dir, filename)}')
-                return
-
-            if os.path.exists(vid_res_path) and os.path.exists(vid_crop_path):
-                print(f"Skipped (already exists): {os.path.join(rel_dir, filename + '.dcm')}")
                 return
 
             mask = cone_extract(frames, frame_ecg_mask, 4)
