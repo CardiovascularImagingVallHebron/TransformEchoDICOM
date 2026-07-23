@@ -39,6 +39,44 @@ The input path must contain the DICOM files, but they do not need to be located 
 
 The number of workers and batch size can optionally be configured through the `PREPROCESS_DCM_WORKERS` and `PREPROCESS_DCM_BATCH_SIZE` environment variables.
 
+## Extract DICOM metadata
+
+`main_process_dicomtag.py` recursively scans a DICOM directory and creates a
+CSV containing one row per valid DICOM file. It reads only the DICOM headers;
+pixel data is not loaded.
+
+Configure the dataset path and name at the bottom of the script:
+
+```python
+root_folder = Path(r"/path/to/input/dicom/files")
+data_name = "dataset_name"
+```
+
+Then run:
+
+```bash
+python main_process_dicomtag.py
+```
+
+The CSV is written to:
+
+```text
+output/<data_name>_dicomtags.csv
+```
+
+The output includes the absolute `filepath`, a `filename` containing the path
+relative to `root_folder` without its extension, the study and acquisition
+metadata, image dimensions, ultrasound region format, and the inferred
+`Modality`. The inferred modalities include B-mode images and cines, Color
+Doppler, M-mode, Doppler, waveform, graphics, and unknown or unspecified cine
+formats.
+
+The CSV is incremental and resumable. Each DICOM row is flushed to disk as soon
+as it is analyzed. If the script is restarted, paths already stored in the CSV
+are skipped. CSV files produced by an earlier version without the `filename`
+column are upgraded automatically before processing continues. A `tqdm`
+progress bar reports newly saved and resumed files.
+
 This project processes ultrasound DICOM files through two paths:
 
 ## Input type
